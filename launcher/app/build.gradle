@@ -10,8 +10,12 @@ android {
         applicationId 'tv.widgetv.home'
         minSdk 25
         targetSdk 34
-        versionCode 7
-        versionName '1.1-api25'
+        versionCode 12
+        versionName '1.2-api25'
+    }
+
+    androidResources {
+        noCompress += ['mp4']
     }
 
     buildFeatures {

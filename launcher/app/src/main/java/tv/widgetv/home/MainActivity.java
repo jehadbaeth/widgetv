@@ -20,6 +20,7 @@ import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -38,6 +39,8 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -85,6 +88,7 @@ public class MainActivity extends Activity {
     private ScrollView page;
     private FrameLayout content;
     private SkyView sky;
+    private FireBackdrop fire;
     private PrayerTimeline timeline;
     private GlassHighlight glass;
     private TextView clock, awayClock, date, ssid;
@@ -145,6 +149,17 @@ public class MainActivity extends Activity {
         page = findViewById(R.id.page);
         content = findViewById(R.id.content);
         sky = findViewById(R.id.sky);
+        TextureView fireTexture = findViewById(R.id.fire);
+        SurfaceView fireSurface = null;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            // A SurfaceView in the layout punches a hole through the picture on newer TVs.
+            fireSurface = new SurfaceView(this);
+            FrameLayout root = findViewById(R.id.root);
+            root.addView(fireSurface, 1, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        fire = new FireBackdrop(this, fireTexture, fireSurface, findViewById(R.id.fire_scrim),
+                findViewById(R.id.fire_dim), findViewById(R.id.root));
         timeline = findViewById(R.id.timeline);
         glass = findViewById(R.id.glass);
         clock = findViewById(R.id.clock);
@@ -163,8 +178,8 @@ public class MainActivity extends Activity {
         cfg = Config.get(this);
         header = findViewById(R.id.header);
         awayRow = findViewById(R.id.away_row);
-        panelRows = cfg.prayerEnabled ? new int[]{ROW_ADHAN, ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
-                ROW_OFFSET + 3, ROW_OFFSET + 4, ROW_FONT, ROW_TEXT_SIZE} : new int[]{ROW_FONT, ROW_TEXT_SIZE};
+        panelRows = cfg.prayerEnabled ? new int[]{ROW_FIRE, ROW_ADHAN, ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
+                ROW_OFFSET + 3, ROW_OFFSET + 4, ROW_FONT, ROW_TEXT_SIZE} : new int[]{ROW_FIRE, ROW_FONT, ROW_TEXT_SIZE};
         timeline.setVisibility(cfg.prayerEnabled ? View.VISIBLE : View.GONE);
         // Second clock: hidden entirely when off; the flag is hidden when its drawable name is unknown.
         awayRow.setVisibility(cfg.secondEnabled ? View.VISIBLE : View.GONE);
@@ -232,7 +247,11 @@ public class MainActivity extends Activity {
         pendingPkg = prefs.getString("pkg", null);
 
         content.getViewTreeObserver().addOnGlobalLayoutListener(this::onLayoutChanged);
-        page.setOnScrollChangeListener((v, x, y, ox, oy) -> sky.setDim(y / (firstScreenH * 0.6f)));
+        page.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            float dim = y / (firstScreenH * 0.6f);
+            sky.setDim(dim);
+            fire.setDim(dim);
+        });
 
         IntentFilter pkgFilter = new IntentFilter();
         pkgFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -267,6 +286,8 @@ public class MainActivity extends Activity {
         register(timeReceiver, timeFilter, false);
         AdhanPlayer.setCue(adhanCue);
         if (AdhanPlayer.activePrayer() >= 0) showAdhanBlob(AdhanPlayer.activePrayer(), AdhanPlayer.activeMode());
+        applyFire();
+        getSystemService(DisplayManager.class).registerDisplayListener(displayListener, main);
         updateClock(); // also the weather stale check
         scheduleThoughtRotation();
         AdhanAlarm.schedule(this);
@@ -281,12 +302,37 @@ public class MainActivity extends Activity {
         main.removeCallbacks(hideAdhanBlob);
         AdhanPlayer.setCue(null);
         adhanBlob.setVisibility(View.GONE);
+        fire.stop();
+        getSystemService(DisplayManager.class).unregisterDisplayListener(displayListener);
         unregisterReceiver(timeReceiver);
         if (zone == Zone.MENU) closeMenu();
         if (zone == Zone.PANEL) closePanel();
         String pkg = focusedPkg();
         prefs.edit().putString("zone", zone.name()).putInt("pill", pillIdx).putString("pkg", pkg).apply();
     }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // Returning from the input picker does not always resume the activity. The video buffer
+        // is gone; the crackle is not. Attach the picture again.
+        if (hasFocus && resumed) fire.rebind();
+    }
+
+    private final DisplayManager.DisplayListener displayListener = new DisplayManager.DisplayListener() {
+        @Override
+        public void onDisplayAdded(int displayId) {
+        }
+
+        @Override
+        public void onDisplayRemoved(int displayId) {
+        }
+
+        @Override
+        public void onDisplayChanged(int displayId) {
+            if (resumed) fire.rebind();
+        }
+    };
 
     @Override
     protected void onNewIntent(Intent intent) {
@@ -315,6 +361,7 @@ public class MainActivity extends Activity {
         main.removeCallbacks(rotateThought);
         main.removeCallbacks(hideAdhanBlob);
         AdhanPlayer.setCue(null);
+        fire.stop();
         unregisterReceiver(packageReceiver);
         if (BuildConfig.DEBUG) unregisterReceiver(debugReceiver);
         getSystemService(ConnectivityManager.class).unregisterNetworkCallback(networkCallback);
@@ -722,7 +769,7 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- Prayer settings panel
 
     /** Row ids: Asr school, method, the five offsets (Fajr, Dhuhr, Asr, Maghrib, Isha), clock font, text size, adhan. */
-    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8, ROW_ADHAN = 9;
+    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8, ROW_ADHAN = 9, ROW_FIRE = 10;
     private static final int PANEL_ROW_DP = 26;
 
     private void openPanel() {
@@ -793,6 +840,9 @@ public class MainActivity extends Activity {
             } else if (i == ROW_ADHAN) {
                 label = getString(R.string.adhan);
                 value = getResources().getStringArray(R.array.adhan_modes)[PrayerPrefs.adhanMode(this)];
+            } else if (i == ROW_FIRE) {
+                label = getString(R.string.fire);
+                value = getString(PrayerPrefs.fire(this) ? R.string.on : R.string.off);
             } else {
                 int prayer = PrayerPrefs.OFFSET_PRAYERS[i - ROW_OFFSET];
                 int off = PrayerPrefs.offset(this, prayer);
@@ -820,6 +870,9 @@ public class MainActivity extends Activity {
             applyTextSize();
         } else if (row == ROW_ADHAN) {
             PrayerPrefs.setAdhanMode(this, (PrayerPrefs.adhanMode(this) + dir + PrayerPrefs.ADHAN_COUNT) % PrayerPrefs.ADHAN_COUNT);
+        } else if (row == ROW_FIRE) {
+            PrayerPrefs.setFire(this, !PrayerPrefs.fire(this));
+            applyFire();
         } else {
             int prayer = PrayerPrefs.OFFSET_PRAYERS[row - ROW_OFFSET];
             PrayerPrefs.setOffset(this, prayer, PrayerPrefs.offset(this, prayer) + dir);
@@ -831,7 +884,7 @@ public class MainActivity extends Activity {
                 + PrayerPrefs.METHODS[PrayerPrefs.methodIndex(this)] + " offsets=" + Arrays.toString(PrayerPrefs.offsets(this))
                 + " clockFont=" + PrayerPrefs.CLOCK_FONTS[PrayerPrefs.clockFont(this)]
                 + " textSize=" + PrayerPrefs.TEXT_SIZES[PrayerPrefs.textSize(this)]
-                + " adhan=" + PrayerPrefs.adhanMode(this) + " times=" + timesLog());
+                + " adhan=" + PrayerPrefs.adhanMode(this) + " fire=" + PrayerPrefs.fire(this) + " times=" + timesLog());
     }
 
     // ---------------------------------------------------------------- clock, date, prayer, weather
@@ -1091,6 +1144,7 @@ public class MainActivity extends Activity {
         public void onAdhan(int prayer, int mode) {
             adhanShownMode = mode;
             showAdhanBlob(prayer, mode);
+            fire.setAdhan(true);
         }
 
         @Override
@@ -1102,8 +1156,16 @@ public class MainActivity extends Activity {
             } else {
                 hideAdhanBlob.run();
             }
+            fire.setAdhan(false);
         }
     };
+
+    private void applyFire() {
+        boolean on = PrayerPrefs.fire(this);
+        sky.setVisibility(on ? View.GONE : View.VISIBLE);
+        fire.setAdhan(AdhanPlayer.activePrayer() >= 0);
+        fire.setEnabled(on);
+    }
 
     private void showAdhanBlob(int prayer, int mode) {
         if (prayer < 0 || prayer >= getResources().getStringArray(R.array.prayer_names).length) return;

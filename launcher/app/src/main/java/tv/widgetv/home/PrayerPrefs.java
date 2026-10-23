@@ -85,6 +85,17 @@ final class PrayerPrefs {
         of(c).edit().putInt("adhan", Math.max(0, Math.min(ADHAN_COUNT - 1, mode))).apply();
     }
 
+    /** Fireplace video and crackle behind the home screen. */
+    static boolean fire(Context c) {
+        SharedPreferences prefs = of(c);
+        if (!prefs.contains("fire")) return Config.get(c).defaultFire;
+        return prefs.getBoolean("fire", false);
+    }
+
+    static void setFire(Context c, boolean on) {
+        of(c).edit().putBoolean("fire", on).apply();
+    }
+
     /** Header clock font: 0 Cormorant Garamond Light, 1 Outfit Thin. */
     static final String[] CLOCK_FONTS = {"Cormorant", "Outfit"};
 

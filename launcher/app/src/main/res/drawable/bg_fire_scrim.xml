@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Darkens the fireplace enough that the clock and the hadith stay readable. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:centerColor="#660C1B33"
+        android:centerY="0.42"
+        android:endColor="#330C1B33"
+        android:startColor="#CC0C1B33" />
+</shape>

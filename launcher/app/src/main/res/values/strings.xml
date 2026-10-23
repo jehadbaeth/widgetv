@@ -19,6 +19,9 @@
     <string name="clock_font">Clock font</string>
     <string name="text_size">Text size</string>
     <string name="adhan">Adhan</string>
+    <string name="fire">Fire</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
     <string name="adhan_channel">Prayer call</string>
     <string name="prayer_offset">%1$s offset</string>
     <string name="offset_value">%1$s min   ·   %2$s</string>

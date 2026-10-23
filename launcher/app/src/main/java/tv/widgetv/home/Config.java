@@ -40,6 +40,8 @@ final class Config {
     final int defaultClockFont, defaultTextSize;
     /** PrayerPrefs.ADHAN_FULL .. ADHAN_OFF. */
     final int defaultAdhan;
+    /** Looping fireplace behind the home screen until the panel turns it off. */
+    final boolean defaultFire;
 
     private static Config instance;
 
@@ -82,6 +84,7 @@ final class Config {
         if (!"full".equals(adhan) && !"takbir".equals(adhan) && !"beep".equals(adhan) && !"off".equals(adhan)) {
             Log.e(TAG, "config: adhan_pref '" + adhan + "' is unknown; using full");
         }
+        defaultFire = r.getBoolean(R.bool.fire_enabled);
 
         Log.i(TAG, "config: prayer=" + (prayerEnabled ? "on" : "off") + " city=" + cityLabel + " lat=" + lat + " lng=" + lng + " method=" + method + " madhab=" + madhab
                 + " second=" + (secondEnabled ? secondLabel + " " + secondZone : "off")

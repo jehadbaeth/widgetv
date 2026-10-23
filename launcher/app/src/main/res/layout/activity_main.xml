@@ -2,6 +2,7 @@
 <!-- The prayer sky sits behind one scrolling page. Nothing is focusable: MainActivity owns the D-pad
      and draws focus itself (gold ring / gold button), so navigation never depends on focus search. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/lapis_900">
@@ -10,6 +11,26 @@
         android:id="@+id/sky"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <TextureView
+        android:id="@+id/fire"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/fire_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_fire_scrim"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/fire_dim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/lapis_900"
+        android:visibility="gone" />
 
     <ScrollView
         android:id="@+id/page"

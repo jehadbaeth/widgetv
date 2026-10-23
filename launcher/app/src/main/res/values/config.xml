@@ -47,6 +47,9 @@
          full: the whole call. takbir: the opening Allahu Akbar. beep: a short tone and a notification. off. -->
     <string name="adhan_pref" translatable="false">full</string>
 
+    <!-- Looping fireplace behind the home screen, with its crackle. The settings panel can turn it off. -->
+    <bool name="fire_enabled">true</bool>
+
     <!-- ============================================================ second clock -->
 
     <!-- A small clock top right for a second city (family abroad, work). false hides it and its weather. -->
