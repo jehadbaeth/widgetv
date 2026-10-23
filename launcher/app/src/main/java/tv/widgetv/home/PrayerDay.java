@@ -98,7 +98,8 @@ final class PrayerDay {
         return after > prev;
     }
 
-    String hijri() {
-        return hijriDay + " " + HIJRI_MONTHS[hijriMonth] + " " + hijriYear;
+    String hijri(android.content.Context c) {
+        String[] months = c.getResources().getStringArray(R.array.hijri_months);
+        return hijriDay + " " + months[hijriMonth] + " " + hijriYear;
     }
 }

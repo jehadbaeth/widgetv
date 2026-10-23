@@ -38,6 +38,8 @@ final class Config {
     final boolean thoughtsEnabled;
     /** Defaults for the Prayer settings panel: 0 Cormorant, 1 Outfit; 0 Normal, 1 Large, 2 Larger. */
     final int defaultClockFont, defaultTextSize;
+    /** PrayerPrefs.ADHAN_FULL .. ADHAN_OFF. */
+    final int defaultAdhan;
 
     private static Config instance;
 
@@ -69,9 +71,17 @@ final class Config {
         weatherUnits = "fahrenheit".equalsIgnoreCase(r.getString(R.string.weather_units).trim()) ? "fahrenheit" : "celsius";
 
         thoughtsEnabled = r.getBoolean(R.bool.thoughts_enabled);
-        defaultClockFont = "outfit".equalsIgnoreCase(r.getString(R.string.clock_font).trim()) ? 1 : 0;
-        String size = r.getString(R.string.text_size).trim().toLowerCase(Locale.ROOT);
+        defaultClockFont = "outfit".equalsIgnoreCase(r.getString(R.string.clock_font_pref).trim()) ? 1 : 0;
+        String size = r.getString(R.string.text_size_pref).trim().toLowerCase(Locale.ROOT);
         defaultTextSize = size.equals("larger") ? 2 : size.equals("large") ? 1 : 0;
+        String adhan = r.getString(R.string.adhan_pref).trim().toLowerCase(Locale.ROOT);
+        defaultAdhan = "off".equals(adhan) ? PrayerPrefs.ADHAN_OFF
+                : "beep".equals(adhan) ? PrayerPrefs.ADHAN_BEEP
+                : "takbir".equals(adhan) ? PrayerPrefs.ADHAN_TAKBIR
+                : PrayerPrefs.ADHAN_FULL;
+        if (!"full".equals(adhan) && !"takbir".equals(adhan) && !"beep".equals(adhan) && !"off".equals(adhan)) {
+            Log.e(TAG, "config: adhan_pref '" + adhan + "' is unknown; using full");
+        }
 
         Log.i(TAG, "config: prayer=" + (prayerEnabled ? "on" : "off") + " city=" + cityLabel + " lat=" + lat + " lng=" + lng + " method=" + method + " madhab=" + madhab
                 + " second=" + (secondEnabled ? secondLabel + " " + secondZone : "off")

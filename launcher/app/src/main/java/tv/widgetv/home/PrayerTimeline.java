@@ -38,9 +38,12 @@ public final class PrayerTimeline extends View {
 
     public PrayerTimeline(Context c, AttributeSet a) {
         super(c, a);
+        // This strip stays left to right even when the rest of the screen is Arabic: Fajr on the
+        // left, the gold bar growing toward Isha on the right, English names and countdown.
+        setLayoutDirection(LAYOUT_DIRECTION_LTR);
         d = getResources().getDisplayMetrics().density;
-        Typeface ui = getResources().getFont(R.font.alexandria);
-        Typeface uiMedium = getResources().getFont(R.font.alexandria_medium);
+        Typeface ui = Fonts.get(getContext(), R.font.alexandria);
+        Typeface uiMedium = Fonts.get(getContext(), R.font.alexandria_medium);
         hair.setColor(Lapis.alpha(Lapis.PLASTER_100, 0.18f));
         hair.setStrokeWidth(Math.max(1f, d / 2));
         stub.setColor(Lapis.alpha(Lapis.PLASTER_100, 0.09f));
@@ -87,7 +90,7 @@ public final class PrayerTimeline extends View {
         invalidate();
     }
 
-    /** Centre of column i, from the same width the columns are laid out with. */
+    /** Centre of column i. Fajr is always the left column. */
     float columnX(int i) {
         return getWidth() / 5f * (i + 0.5f);
     }
@@ -162,8 +165,9 @@ public final class PrayerTimeline extends View {
         return String.format(Locale.US, "%d:%02d", h % 12 == 0 ? 12 : h % 12, m);
     }
 
-    static String countdown(long ms) {
+    private String countdown(long ms) {
         long min = Math.max(0, (ms + 59_999) / 60_000);
-        return min >= 60 ? (min / 60) + "h " + (min % 60) + "m" : min + "m";
+        if (min >= 60) return (min / 60) + "h " + (min % 60) + "m";
+        return min + "m";
     }
 }

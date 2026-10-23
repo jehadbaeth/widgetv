@@ -11,6 +11,14 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Weather only (Open-Meteo, no key), fetched while home is in front. The launcher's only network use. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Adhan at prayer time, including while another app is in front. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <!-- Android 11+ package visibility: without these the app grid is empty. -->
     <queries>
@@ -32,6 +40,7 @@
         android:banner="@drawable/banner"
         android:icon="@drawable/icon"
         android:label="@string/app_name"
+        android:supportsRtl="true"
         android:theme="@style/Theme.Launcher">
 
         <activity
@@ -48,5 +57,22 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".AdhanPlayer"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <receiver
+            android:name=".AdhanReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="tv.widgetv.home.ADHAN" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

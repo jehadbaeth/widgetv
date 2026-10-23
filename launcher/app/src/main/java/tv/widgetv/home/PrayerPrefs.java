@@ -72,6 +72,19 @@ final class PrayerPrefs {
         return out;
     }
 
+    /** Adhan at the five prayer times: full call, the opening takbir, a beep, or nothing. */
+    static final int ADHAN_FULL = 0, ADHAN_TAKBIR = 1, ADHAN_BEEP = 2, ADHAN_OFF = 3, ADHAN_COUNT = 4;
+
+    static int adhanMode(Context c) {
+        int fallback = Config.get(c).defaultAdhan;
+        int mode = of(c).getInt("adhan", fallback);
+        return mode < 0 || mode >= ADHAN_COUNT ? fallback : mode;
+    }
+
+    static void setAdhanMode(Context c, int mode) {
+        of(c).edit().putInt("adhan", Math.max(0, Math.min(ADHAN_COUNT - 1, mode))).apply();
+    }
+
     /** Header clock font: 0 Cormorant Garamond Light, 1 Outfit Thin. */
     static final String[] CLOCK_FONTS = {"Cormorant", "Outfit"};
 

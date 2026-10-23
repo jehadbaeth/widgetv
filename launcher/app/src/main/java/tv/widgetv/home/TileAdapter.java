@@ -46,6 +46,8 @@ final class TileAdapter extends RecyclerView.Adapter<TileAdapter.Holder> {
             lp.gravity = Gravity.CENTER_HORIZONTAL;
         }
         h.card.setClipToOutline(true);
+        boolean ar = "ar".equals(java.util.Locale.getDefault().getLanguage());
+        h.name.setTypeface(Fonts.get(parent.getContext(), ar ? R.font.noto_naskh : R.font.alexandria));
         return h;
     }
 

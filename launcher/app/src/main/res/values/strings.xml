@@ -11,4 +11,73 @@
     <string name="tv_inputs">TV inputs</string>
     <string name="prayer_settings">Prayer settings</string>
     <string name="display_settings">Display settings</string>
+    <string name="panel_hint">◀ ▶ change   ·   OK close</string>
+    <string name="asr_school">Asr school</string>
+    <string name="hanafi">Hanafi</string>
+    <string name="shafi">Shafi\'i</string>
+    <string name="method">Method</string>
+    <string name="clock_font">Clock font</string>
+    <string name="text_size">Text size</string>
+    <string name="adhan">Adhan</string>
+    <string name="adhan_channel">Prayer call</string>
+    <string name="prayer_offset">%1$s offset</string>
+    <string name="offset_value">%1$s min   ·   %2$s</string>
+    <string name="setting_value">‹  %1$s  ›</string>
+    <string name="jumuah">Jumu\'ah Mubarak</string>
+    <string name="thought_today">Thought for today</string>
+    <string name="prayer_in">in %1$s</string>
+    <string name="countdown_hm">%1$dh %2$dm</string>
+    <string name="countdown_m">%1$dm</string>
+    <string name="dock_now_first">%1$s is now first</string>
+    <string name="dock_moved_up">%1$s moved forward</string>
+
+    <string-array name="prayer_names">
+        <item>Fajr</item>
+        <item>Sunrise</item>
+        <item>Dhuhr</item>
+        <item>Asr</item>
+        <item>Maghrib</item>
+        <item>Isha</item>
+    </string-array>
+    <string-array name="hijri_months">
+        <item>Muharram</item>
+        <item>Safar</item>
+        <item>Rabi\' al-Awwal</item>
+        <item>Rabi\' al-Thani</item>
+        <item>Jumada al-Ula</item>
+        <item>Jumada al-Akhirah</item>
+        <item>Rajab</item>
+        <item>Sha\'ban</item>
+        <item>Ramadan</item>
+        <item>Shawwal</item>
+        <item>Dhu al-Qadah</item>
+        <item>Dhu al-Hijjah</item>
+    </string-array>
+    <string-array name="method_names">
+        <item>Karachi</item>
+        <item>Muslim World League</item>
+        <item>Umm al-Qura</item>
+        <item>Egyptian</item>
+        <item>North America (ISNA)</item>
+        <item>Dubai</item>
+        <item>Kuwait</item>
+        <item>Qatar</item>
+        <item>Singapore</item>
+        <item>Moonsighting Committee</item>
+    </string-array>
+    <string-array name="clock_fonts">
+        <item>Cormorant</item>
+        <item>Outfit</item>
+    </string-array>
+    <string-array name="text_sizes">
+        <item>Normal</item>
+        <item>Large</item>
+        <item>Larger</item>
+    </string-array>
+    <string-array name="adhan_modes">
+        <item>Full</item>
+        <item>Allahu Akbar</item>
+        <item>Beep</item>
+        <item>Off</item>
+    </string-array>
 </resources>

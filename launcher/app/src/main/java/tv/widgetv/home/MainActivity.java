@@ -25,13 +25,15 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.text.SpannableStringBuilder;
+import android.text.TextPaint;
 import android.text.Spanned;
 import android.text.format.DateFormat;
 import android.text.style.DynamicDrawableSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.ImageSpan;
-import android.text.style.TypefaceSpan;
+import android.text.style.MetricAffectingSpan;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -43,6 +45,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -65,8 +68,9 @@ import java.util.concurrent.Executors;
  * The home screen. The activity owns the D-pad completely: nothing is focusable, focus
  * is a (zone, index) pair, and one gold ring (GlassHighlight) springs to whatever that points at.
  * Zones top to bottom: pills (TOP), prayer timeline (or, with prayer_enabled=false, the clock header),
- * dock, grid; plus the Inputs dropdown and the settings panel as modal zones. Everything time-based
- * updates on ACTION_TIME_TICK only. Every user choice comes from res/values/config.xml (Config).
+ * dock, grid; plus the Inputs dropdown and the settings panel as modal zones. Clocks and prayer times
+ * update on ACTION_TIME_TICK. The hadith rotates on its own timer while home is in front. Every user
+ * choice comes from res/values/config.xml (Config).
  */
 public class MainActivity extends Activity {
     private static final String TAG = Config.TAG;
@@ -103,7 +107,10 @@ public class MainActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private AppLoader loader;
     private List<String> lastSignature;   // io thread only
+    private static final int DOCK_SLOTS = 4;
     private List<String> dockPackages, hiddenPackages;
+    /** Set while OK is held, so the release does not also open the app. */
+    private boolean centerHeld;
     private SharedPreferences prefs;
     private Weather weather;
     private PrayerDay day;
@@ -114,14 +121,22 @@ public class MainActivity extends Activity {
     private Thoughts thoughts;
     private View hereWeather, thought;
     private ImageView awayFlag;
-    private TextView hereTemp, awayTemp, awayRange, thoughtTag, thoughtText, thoughtSource;
+    private TextView hereTemp, awayTemp, awayRange, thoughtTag, thoughtText, thoughtSource, adhanBlob;
     private LocalDate shownThoughtDate;
+    /** Steps past today's stable hadith. The home screen advances this while it is in front. */
+    private int thoughtSlot;
+    private static final long THOUGHT_EVERY_MS = 60_000L;
     private Config cfg;
     private View header, awayRow;
     /** The panel's rows (ROW_* ids): all nine with prayer times on, only font and text size without. */
     private int[] panelRows;
 
     // ---------------------------------------------------------------- lifecycle
+
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(UiLang.wrap(base));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,7 +163,7 @@ public class MainActivity extends Activity {
         cfg = Config.get(this);
         header = findViewById(R.id.header);
         awayRow = findViewById(R.id.away_row);
-        panelRows = cfg.prayerEnabled ? new int[]{ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
+        panelRows = cfg.prayerEnabled ? new int[]{ROW_ADHAN, ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
                 ROW_OFFSET + 3, ROW_OFFSET + 4, ROW_FONT, ROW_TEXT_SIZE} : new int[]{ROW_FONT, ROW_TEXT_SIZE};
         timeline.setVisibility(cfg.prayerEnabled ? View.VISIBLE : View.GONE);
         // Second clock: hidden entirely when off; the flag is hidden when its drawable name is unknown.
@@ -156,8 +171,31 @@ public class MainActivity extends Activity {
         if (cfg.secondFlag != 0) awayFlag.setImageResource(cfg.secondFlag);
         else awayFlag.setVisibility(View.GONE);
         awayClock.setContentDescription(cfg.secondLabel);
-        ui = getResources().getFont(R.font.alexandria);
+        boolean ar = "ar".equals(Locale.getDefault().getLanguage());
+        ui = Fonts.get(this, ar ? R.font.noto_naskh : R.font.alexandria);
         date = findViewById(R.id.date);
+        date.setTypeface(ui);
+        ssid.setTypeface(ui);
+        awayRange.setTypeface(ui);
+        thoughtTag.setTypeface(ui);
+        thoughtText.setTypeface(ar ? ui : Fonts.get(this, R.font.cormorant_garamond_italic));
+        if (ar) {
+            thoughtTag.setLetterSpacing(0f);
+            thoughtTag.setAllCaps(false);
+        }
+        thoughtSource.setTypeface(ui);
+        adhanBlob = new TextView(this);
+        adhanBlob.setVisibility(View.GONE);
+        adhanBlob.setTypeface(ui);
+        adhanBlob.setTextColor(Lapis.LAPIS_900);
+        adhanBlob.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+        adhanBlob.setBackgroundResource(R.drawable.bg_blob);
+        adhanBlob.setPadding(dp(22), dp(8), dp(22), dp(8));
+        FrameLayout.LayoutParams blobLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        blobLp.topMargin = dp(28);
+        ((ViewGroup) getWindow().getDecorView()).addView(adhanBlob, blobLp);
         menu = findViewById(R.id.menu);
         panel = findViewById(R.id.panel);
         pills = new ImageView[]{findViewById(R.id.btn_inputs), findViewById(R.id.btn_wifi),
@@ -205,7 +243,10 @@ public class MainActivity extends Activity {
         register(packageReceiver, pkgFilter, false);
         if (BuildConfig.DEBUG) register(debugReceiver, new IntentFilter(debugAction()), true);
 
-        getSystemService(ConnectivityManager.class).registerDefaultNetworkCallback(networkCallback, main);
+        ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+        // The Handler overload is Android 8. Android 7 takes the callback on the main thread.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) cm.registerDefaultNetworkCallback(networkCallback, main);
+        else cm.registerDefaultNetworkCallback(networkCallback);
     }
 
     private void setUpList(RecyclerView list, TileAdapter adapter) {
@@ -224,7 +265,11 @@ public class MainActivity extends Activity {
         timeFilter.addAction(Intent.ACTION_TIME_CHANGED);
         timeFilter.addAction(Intent.ACTION_TIMEZONE_CHANGED);
         register(timeReceiver, timeFilter, false);
+        AdhanPlayer.setCue(adhanCue);
+        if (AdhanPlayer.activePrayer() >= 0) showAdhanBlob(AdhanPlayer.activePrayer(), AdhanPlayer.activeMode());
         updateClock(); // also the weather stale check
+        scheduleThoughtRotation();
+        AdhanAlarm.schedule(this);
         loadApps(false);
     }
 
@@ -232,6 +277,10 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         resumed = false;
+        main.removeCallbacks(rotateThought);
+        main.removeCallbacks(hideAdhanBlob);
+        AdhanPlayer.setCue(null);
+        adhanBlob.setVisibility(View.GONE);
         unregisterReceiver(timeReceiver);
         if (zone == Zone.MENU) closeMenu();
         if (zone == Zone.PANEL) closePanel();
@@ -263,6 +312,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        main.removeCallbacks(rotateThought);
+        main.removeCallbacks(hideAdhanBlob);
+        AdhanPlayer.setCue(null);
         unregisterReceiver(packageReceiver);
         if (BuildConfig.DEBUG) unregisterReceiver(debugReceiver);
         getSystemService(ConnectivityManager.class).unregisterNetworkCallback(networkCallback);
@@ -281,7 +333,8 @@ public class MainActivity extends Activity {
             lastSignature = sig;
 
             List<AppEntry> dock = new ArrayList<>();
-            for (String pkg : dockPackages) {
+            for (String pkg : dockOrder()) {
+                if (dock.size() >= DOCK_SLOTS) break;
                 AppLoader.Candidate c = found.remove(pkg);
                 if (c != null) dock.add(loader.entry(c));
             }
@@ -352,7 +405,18 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
-                if (!down && !ev.isCanceled()) select();
+                if (down) {
+                    // A held OK rearranges the featured row. A tap still opens the app.
+                    // The first repeat is the long-press. A tap is a single down with repeat 0.
+                    if ((ev.getRepeatCount() >= 1
+                            || (ev.getFlags() & KeyEvent.FLAG_LONG_PRESS) != 0) && !centerHeld) {
+                        centerHeld = true;
+                        arrangeFocused();
+                    }
+                } else {
+                    if (!centerHeld && !ev.isCanceled()) select();
+                    centerHeld = false;
+                }
                 return true;
             case KeyEvent.KEYCODE_BACK:
                 // Home never goes "back"; Back only closes the dropdown or the panel.
@@ -368,6 +432,14 @@ public class MainActivity extends Activity {
         int dockN = dockAdapter.getItemCount(), gridN = gridAdapter.getItemCount();
         boolean up = code == KeyEvent.KEYCODE_DPAD_UP, dn = code == KeyEvent.KEYCODE_DPAD_DOWN;
         boolean left = code == KeyEvent.KEYCODE_DPAD_LEFT, right = code == KeyEvent.KEYCODE_DPAD_RIGHT;
+        // Arabic lays the first tile on the right. A press on the left of the remote should
+        // still move the highlight toward the left of the screen.
+        if (zone != Zone.PANEL && zone != Zone.MENU
+                && getResources().getConfiguration().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+            boolean towardScreenLeft = left;
+            left = right;
+            right = towardScreenLeft;
+        }
         switch (zone) {
             case TOP:
                 if (left && pillIdx > 0) focus(Zone.TOP, pillIdx - 1, true);
@@ -406,6 +478,46 @@ public class MainActivity extends Activity {
                 else if (left || right) changeSetting(panelRows[panelIdx], right ? 1 : -1);
                 break;
         }
+    }
+
+    /** Hold OK on a grid app to put it first. Hold OK on a featured app to move it one step forward. */
+    private void arrangeFocused() {
+        if (zone != Zone.DOCK && zone != Zone.GRID) return;
+        String pkg = focusedPkg();
+        if (pkg == null) return;
+        String label = zone == Zone.DOCK
+                ? dockAdapter.items.get(dockIdx).label
+                : gridAdapter.items.get(gridIdx).label;
+        List<String> order = new ArrayList<>();
+        for (AppEntry entry : dockAdapter.items) order.add(entry.pkg());
+        int fromGrid = zone == Zone.GRID ? 1 : 0;
+        int at = order.indexOf(pkg);
+        if (fromGrid == 1) {
+            order.remove(pkg);
+            order.add(0, pkg);
+            while (order.size() > DOCK_SLOTS) order.remove(order.size() - 1);
+            Toast.makeText(this, getString(R.string.dock_now_first, label), Toast.LENGTH_SHORT).show();
+        } else if (at <= 0) {
+            return;
+        } else {
+            order.remove(at);
+            order.add(at - 1, pkg);
+            Toast.makeText(this, getString(R.string.dock_moved_up, label), Toast.LENGTH_SHORT).show();
+        }
+        getSharedPreferences("dock", MODE_PRIVATE).edit()
+                .putString("order", TextUtils.join(",", order)).apply();
+        pendingPkg = pkg;
+        zone = Zone.DOCK;
+        loadApps(true);
+    }
+
+    /** Saved featured order, or the config list until the first hold-OK. */
+    private List<String> dockOrder() {
+        String saved = getSharedPreferences("dock", MODE_PRIVATE).getString("order", "");
+        if (saved == null || saved.isEmpty()) return dockPackages;
+        List<String> order = new ArrayList<>();
+        for (String pkg : saved.split(",")) if (!pkg.isEmpty()) order.add(pkg);
+        return order.isEmpty() ? dockPackages : order;
     }
 
     private void select() {
@@ -609,8 +721,9 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- Prayer settings panel
 
-    /** Row ids: Asr school, method, the five offsets (Fajr, Dhuhr, Asr, Maghrib, Isha), clock font, text size. */
-    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8;
+    /** Row ids: Asr school, method, the five offsets (Fajr, Dhuhr, Asr, Maghrib, Isha), clock font, text size, adhan. */
+    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8, ROW_ADHAN = 9;
+    private static final int PANEL_ROW_DP = 26;
 
     private void openPanel() {
         panel.removeAllViews();
@@ -620,7 +733,7 @@ public class MainActivity extends Activity {
                 : getString(R.string.display_settings);
         title.addView(rowText(titleText, 15, Lapis.GOLD_400),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        title.addView(rowText("◀ ▶ change   ·   OK close", 11, Lapis.MIST_400),
+        title.addView(rowText(getString(R.string.panel_hint), 11, Lapis.MIST_400),
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
         title.setPadding(dp(14), 0, dp(14), 0);
         panel.addView(title, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
@@ -630,11 +743,11 @@ public class MainActivity extends Activity {
             row.addView(rowText("", 14, Lapis.PLASTER_100), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
             row.addView(rowText("", 14, Lapis.GOLD_400),
                     new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            panel.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+            panel.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(PANEL_ROW_DP)));
         }
         renderPanel();
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) panel.getLayoutParams();
-        int panelH = dp(30 + 28 * panelRows.length + 16);
+        int panelH = dp(30 + PANEL_ROW_DP * panelRows.length + 16);
         if (cfg.prayerEnabled) {
             RectF tl = rectInContent(timeline);
             lp.leftMargin = (int) (tl.centerX() - dp(210));
@@ -666,26 +779,29 @@ public class MainActivity extends Activity {
             int i = panelRows[k];
             String label, value;
             if (i == ROW_ASR) {
-                label = "Asr school";
-                value = PrayerPrefs.hanafi(this) ? "Hanafi" : "Shafi'i";
+                label = getString(R.string.asr_school);
+                value = getString(PrayerPrefs.hanafi(this) ? R.string.hanafi : R.string.shafi);
             } else if (i == ROW_METHOD) {
-                label = "Method";
-                value = PrayerPrefs.METHOD_NAMES[PrayerPrefs.methodIndex(this)];
+                label = getString(R.string.method);
+                value = getResources().getStringArray(R.array.method_names)[PrayerPrefs.methodIndex(this)];
             } else if (i == ROW_FONT) {
-                label = "Clock font";
-                value = PrayerPrefs.CLOCK_FONTS[PrayerPrefs.clockFont(this)];
+                label = getString(R.string.clock_font);
+                value = getResources().getStringArray(R.array.clock_fonts)[PrayerPrefs.clockFont(this)];
             } else if (i == ROW_TEXT_SIZE) {
-                label = "Text size";
-                value = PrayerPrefs.TEXT_SIZES[PrayerPrefs.textSize(this)];
+                label = getString(R.string.text_size);
+                value = getResources().getStringArray(R.array.text_sizes)[PrayerPrefs.textSize(this)];
+            } else if (i == ROW_ADHAN) {
+                label = getString(R.string.adhan);
+                value = getResources().getStringArray(R.array.adhan_modes)[PrayerPrefs.adhanMode(this)];
             } else {
                 int prayer = PrayerPrefs.OFFSET_PRAYERS[i - ROW_OFFSET];
                 int off = PrayerPrefs.offset(this, prayer);
-                label = PrayerDay.NAMES[prayer] + " offset";
-                value = (off > 0 ? "+" : off < 0 ? "−" : "") + Math.abs(off) + " min   ·   "
-                        + clockText(day.times[prayer]);
+                String sign = (off > 0 ? "+" : off < 0 ? "−" : "") + Math.abs(off);
+                label = getString(R.string.prayer_offset, getResources().getStringArray(R.array.prayer_names)[prayer]);
+                value = getString(R.string.offset_value, sign, clockText(day.times[prayer]));
             }
             ((TextView) row.getChildAt(0)).setText(label);
-            ((TextView) row.getChildAt(1)).setText("‹  " + value + "  ›");
+            ((TextView) row.getChildAt(1)).setText(getString(R.string.setting_value, value));
             rowLook(row, zone == Zone.PANEL && k == panelIdx);
         }
     }
@@ -702,16 +818,20 @@ public class MainActivity extends Activity {
         } else if (row == ROW_TEXT_SIZE) {
             PrayerPrefs.setTextSize(this, (PrayerPrefs.textSize(this) + dir + 3) % 3);
             applyTextSize();
+        } else if (row == ROW_ADHAN) {
+            PrayerPrefs.setAdhanMode(this, (PrayerPrefs.adhanMode(this) + dir + PrayerPrefs.ADHAN_COUNT) % PrayerPrefs.ADHAN_COUNT);
         } else {
             int prayer = PrayerPrefs.OFFSET_PRAYERS[row - ROW_OFFSET];
             PrayerPrefs.setOffset(this, prayer, PrayerPrefs.offset(this, prayer) + dir);
         }
         refreshPrayer();
         renderPanel();
+        AdhanAlarm.schedule(this);
         Log.i(TAG, "prayer settings: hanafi=" + PrayerPrefs.hanafi(this) + " method="
                 + PrayerPrefs.METHODS[PrayerPrefs.methodIndex(this)] + " offsets=" + Arrays.toString(PrayerPrefs.offsets(this))
                 + " clockFont=" + PrayerPrefs.CLOCK_FONTS[PrayerPrefs.clockFont(this)]
-                + " textSize=" + PrayerPrefs.TEXT_SIZES[PrayerPrefs.textSize(this)] + " times=" + timesLog());
+                + " textSize=" + PrayerPrefs.TEXT_SIZES[PrayerPrefs.textSize(this)]
+                + " adhan=" + PrayerPrefs.adhanMode(this) + " times=" + timesLog());
     }
 
     // ---------------------------------------------------------------- clock, date, prayer, weather
@@ -807,16 +927,16 @@ public class MainActivity extends Activity {
 
     private void applyClockFont() {
         boolean outfit = PrayerPrefs.clockFont(this) == 1;
-        Typeface tf = getResources().getFont(outfit ? R.font.outfit : R.font.cormorant_garamond);
+        Typeface tf = Fonts.get(this, outfit ? R.font.outfit : R.font.cormorant_garamond);
         clock.setTypeface(tf);
-        clock.setFontVariationSettings(outfit ? "'wght' 200" : "'wght' 300");
+        Fonts.weight(clock, outfit ? "'wght' 200" : "'wght' 300");
         awayClock.setTypeface(tf);
-        awayClock.setFontVariationSettings(outfit ? "'wght' 300" : "'wght' 500");
+        Fonts.weight(awayClock, outfit ? "'wght' 300" : "'wght' 500");
         // Temperatures in the clock family: light beside the main clock, as heavy as the second-clock time beside it.
         hereTemp.setTypeface(tf);
-        hereTemp.setFontVariationSettings(outfit ? "'wght' 200" : "'wght' 300");
+        Fonts.weight(hereTemp, outfit ? "'wght' 200" : "'wght' 300");
         awayTemp.setTypeface(tf);
-        awayTemp.setFontVariationSettings(outfit ? "'wght' 300" : "'wght' 500");
+        Fonts.weight(awayTemp, outfit ? "'wght' 300" : "'wght' 500");
         // Cormorant's default figures are old-style (x-height); clocks want lining figures.
         for (TextView t : new TextView[]{clock, awayClock, hereTemp, awayTemp}) t.setFontFeatureSettings("lnum");
     }
@@ -843,14 +963,14 @@ public class MainActivity extends Activity {
         ZonedDateTime local = nowZoned();
         ZonedDateTime away = local.withZoneSameInstant(cfg.secondZone);
         String weekday = away.toLocalDate().equals(local.toLocalDate()) ? ""
-                : away.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.UK) + " ";
+                : away.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.getDefault()) + " ";
         awayClock.setText(weekday + hmAmPm(away, h24));
 
         SpannableStringBuilder sb = new SpannableStringBuilder();
         append(sb, DateFormat.format("EEEE d MMMM", nowMillis()), Lapis.PLASTER_100);
         if (cfg.prayerEnabled) {
             append(sb, "   ·   ", Lapis.MIST_400);
-            append(sb, day.hijri(), Lapis.GOLD_400);
+            append(sb, day.hijri(this), Lapis.GOLD_400);
         }
         if (w != null && w[0].hasRange) {
             append(sb, "   ·   ", Lapis.MIST_400);
@@ -886,32 +1006,118 @@ public class MainActivity extends Activity {
         for (int i = 0; i < sb.length(); i++) {
             char ch = sb.charAt(i);
             if (ch == '↑' || ch == '↓') {
-                sb.setSpan(new TypefaceSpan(Typeface.DEFAULT), i, i + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new SystemSans(), i, i + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
         }
         return sb;
     }
 
-    /** Thought of the day; the pick only changes when the date (in the TV's time zone) changes. */
+    /** TypefaceSpan(Typeface) is Android 9. This draws the arrows in the system sans on Android 7. */
+    private static final class SystemSans extends MetricAffectingSpan {
+        @Override
+        public void updateDrawState(TextPaint tp) {
+            tp.setTypeface(Typeface.DEFAULT);
+        }
+
+        @Override
+        public void updateMeasureState(TextPaint tp) {
+            tp.setTypeface(Typeface.DEFAULT);
+        }
+    }
+
+    /** Thought of the day. A new date starts again at the stable pick; the timer then walks the list. */
     private void renderThought() {
         if (!cfg.thoughtsEnabled) {
             thought.setVisibility(View.GONE);
             return;
         }
-        LocalDate today = fakeDate != null ? fakeDate
-                : java.time.Instant.ofEpochMilli(nowMillis()).atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate today = thoughtToday();
         if (today.equals(shownThoughtDate)) return;
-        Thoughts.Thought t = thoughts.pick(today);
-
-        shownThoughtDate = today;
-        thought.setVisibility(t == null ? View.GONE : View.VISIBLE);
-        if (t == null) return;
-        thoughtTag.setText(t.friday ? "Jumu'ah Mubarak" : "Thought for today");
-        thoughtText.setText("“" + t.text + "”");
-        thoughtSource.setText(t.source);
-        thoughtSource.setVisibility(t.source == null ? View.GONE : View.VISIBLE);
-        Log.i(TAG, "thought: date=" + today + " friday=" + t.friday + " source=" + t.source);
+        thoughtSlot = 0;
+        bindThought(today, false);
     }
+
+    private final Runnable rotateThought = () -> {
+        if (!resumed || !cfg.thoughtsEnabled) return;
+        LocalDate today = thoughtToday();
+        if (!today.equals(shownThoughtDate)) thoughtSlot = 0;
+        else thoughtSlot++;
+        bindThought(today, true);
+        scheduleThoughtRotation();
+    };
+
+    private void scheduleThoughtRotation() {
+        main.removeCallbacks(rotateThought);
+        if (resumed && cfg.thoughtsEnabled && thoughts.count(thoughtToday()) > 1) {
+            main.postDelayed(rotateThought, THOUGHT_EVERY_MS);
+        }
+    }
+
+    private LocalDate thoughtToday() {
+        return fakeDate != null ? fakeDate
+                : java.time.Instant.ofEpochMilli(nowMillis()).atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private void bindThought(LocalDate today, boolean fade) {
+        Thoughts.Thought t = thoughts.at(today, thoughtSlot);
+        shownThoughtDate = today;
+        if (t == null) {
+            thought.setVisibility(View.GONE);
+            return;
+        }
+        Runnable apply = () -> {
+            thought.setVisibility(View.VISIBLE);
+            thought.setAlpha(fade ? 0f : 1f);
+            thoughtTag.setText(t.friday ? R.string.jumuah : R.string.thought_today);
+            thoughtText.setText("“" + t.text + "”");
+            thoughtSource.setText(t.source);
+            thoughtSource.setVisibility(t.source == null ? View.GONE : View.VISIBLE);
+            if (fade) thought.animate().alpha(1f).setDuration(320).start();
+        };
+        Log.i(TAG, "thought: date=" + today + " slot=" + thoughtSlot + " friday=" + t.friday + " source=" + t.source);
+        if (!fade || thought.getVisibility() != View.VISIBLE) {
+            thought.animate().cancel();
+            apply.run();
+            return;
+        }
+        thought.animate().cancel();
+        thought.animate().alpha(0f).setDuration(280).withEndAction(apply).start();
+    }
+
+    private int adhanShownMode = PrayerPrefs.ADHAN_OFF;
+
+    private final AdhanPlayer.Cue adhanCue = new AdhanPlayer.Cue() {
+        @Override
+        public void onAdhan(int prayer, int mode) {
+            adhanShownMode = mode;
+            showAdhanBlob(prayer, mode);
+        }
+
+        @Override
+        public void onAdhanEnd() {
+            // Follow the clip that just played. A beep stays up briefly; the spoken call ends with the audio.
+            if (adhanShownMode == PrayerPrefs.ADHAN_BEEP) {
+                main.removeCallbacks(hideAdhanBlob);
+                main.postDelayed(hideAdhanBlob, 6_000);
+            } else {
+                hideAdhanBlob.run();
+            }
+        }
+    };
+
+    private void showAdhanBlob(int prayer, int mode) {
+        if (prayer < 0 || prayer >= getResources().getStringArray(R.array.prayer_names).length) return;
+        adhanBlob.setText(getResources().getStringArray(R.array.prayer_names)[prayer]);
+        adhanBlob.setAlpha(0f);
+        adhanBlob.setVisibility(View.VISIBLE);
+        adhanBlob.animate().alpha(1f).setDuration(180).start();
+        main.removeCallbacks(hideAdhanBlob);
+        if (mode == PrayerPrefs.ADHAN_BEEP) main.postDelayed(hideAdhanBlob, 6_000);
+    }
+
+    private final Runnable hideAdhanBlob = () -> {
+        adhanBlob.animate().alpha(0f).setDuration(220).withEndAction(() -> adhanBlob.setVisibility(View.GONE)).start();
+    };
 
     private static void append(SpannableStringBuilder sb, CharSequence text, int color) {
         int s = sb.length();
@@ -998,6 +1204,14 @@ public class MainActivity extends Activity {
             Log.i(TAG, "debug: period=" + sky.forcedPeriod + " pattern=" + sky.forcedPattern + " fakeMinutes=" + fakeMinutes
                     + " fakeDate=" + fakeDate + " now=" + nowZoned());
             if (intent.getBooleanExtra("weather_refresh", false)) weather.maybeFetch(true, MainActivity.this::renderDateAndWeather);
+            if (intent.getBooleanExtra("rotate", false)) rotateThought.run();
+            String adhan = intent.getStringExtra("adhan");
+            if (adhan != null) {
+                int mode = "takbir".equals(adhan) ? PrayerPrefs.ADHAN_TAKBIR
+                        : "beep".equals(adhan) ? PrayerPrefs.ADHAN_BEEP
+                        : "off".equals(adhan) ? PrayerPrefs.ADHAN_OFF : PrayerPrefs.ADHAN_FULL;
+                AdhanPlayer.start(MainActivity.this, PrayerDay.DHUHR, 0, true, mode);
+            }
             // Everything time-based (both clocks, weekday prefix, date line, sky, timeline, thought) reads nowMillis().
             renderClocks();
         }

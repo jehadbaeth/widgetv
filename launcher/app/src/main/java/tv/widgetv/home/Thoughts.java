@@ -10,11 +10,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.Locale;
 
 /**
  * Thought of the day from res/raw/thoughts.json:
  * {"weekday":[{"text":"…","source":"…"|null}], "friday":[…]}. The pick is stable for the whole local
- * (TV time zone) day: weekday[epochDay % n] on other days, friday[(epochDay / 7) % n] on Fridays.
+ * (TV time zone) day. Slot 0 is weekday[epochDay % n], or friday[(epochDay / 7) % n] on Fridays.
+ * Later slots walk that same list.
  */
 final class Thoughts {
     private static final String TAG = Config.TAG;
@@ -46,19 +48,39 @@ final class Thoughts {
         }
     }
 
-    /** null when there is nothing to show for that day. */
+    /** How many lines rotate on this date. 0 when the file failed to load. */
+    int count(LocalDate day) {
+        return size(listFor(day));
+    }
+
+    /** null when there is nothing to show for that day. Slot 0 is the old once-a-day pick. */
     Thought pick(LocalDate day) {
-        boolean fri = day.getDayOfWeek() == DayOfWeek.FRIDAY;
-        long epochDay = day.toEpochDay();
-        JSONArray list = fri && size(friday) > 0 ? friday : weekday;
+        return at(day, 0);
+    }
+
+    /** The line `slot` steps after today's stable pick, wrapping through that day's list. */
+    Thought at(LocalDate day, int slot) {
+        JSONArray list = listFor(day);
         if (size(list) == 0) return null;
         boolean fromFriday = list == friday;
-        int i = (int) Math.floorMod(fromFriday ? epochDay / 7 : epochDay, (long) list.length());
+        long epochDay = day.toEpochDay();
+        int base = (int) Math.floorMod(fromFriday ? epochDay / 7 : epochDay, (long) list.length());
+        int i = Math.floorMod(base + slot, list.length());
         JSONObject o = list.optJSONObject(i);
-        if (o == null || o.optString("text", "").isEmpty()) return null;
-        String source = o.isNull("source") ? null : o.optString("source", null);
+        if (o == null) return null;
+        boolean ar = "ar".equals(Locale.getDefault().getLanguage());
+        String text = ar ? o.optString("text_ar", "") : "";
+        if (text.isEmpty()) text = o.optString("text", "");
+        if (text.isEmpty()) return null;
+        String source = ar && !o.isNull("source_ar") ? o.optString("source_ar", null) : null;
+        if (source == null || source.isEmpty()) source = o.isNull("source") ? null : o.optString("source", null);
         if (source != null && source.isEmpty()) source = null;
-        return new Thought(fromFriday, o.optString("text"), source); // the Jumu'ah tag only with a Friday entry
+        return new Thought(fromFriday, text, source); // the Jumu'ah tag only with a Friday entry
+    }
+
+    private JSONArray listFor(LocalDate day) {
+        boolean fri = day.getDayOfWeek() == DayOfWeek.FRIDAY;
+        return fri && size(friday) > 0 ? friday : weekday;
     }
 
     private static int size(JSONArray a) {

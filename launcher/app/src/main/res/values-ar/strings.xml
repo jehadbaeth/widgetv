@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WidgeTV</string>
+    <string name="inputs">المداخل</string>
+    <string name="wifi">واي فاي</string>
+    <string name="ethernet">إيثرنت</string>
+    <string name="offline">غير متصل</string>
+    <string name="settings">الإعدادات</string>
+    <string name="apps">التطبيقات</string>
+    <string name="live_tv">البث المباشر</string>
+    <string name="tv_inputs">مداخل التلفاز</string>
+    <string name="prayer_settings">إعدادات الصلاة</string>
+    <string name="display_settings">إعدادات العرض</string>
+    <string name="panel_hint">◀ ▶ تغيير   ·   موافق إغلاق</string>
+    <string name="asr_school">مذهب العصر</string>
+    <string name="hanafi">حنفي</string>
+    <string name="shafi">شافعي</string>
+    <string name="method">طريقة الحساب</string>
+    <string name="clock_font">خط الساعة</string>
+    <string name="text_size">حجم النص</string>
+    <string name="adhan">الأذان</string>
+    <string name="adhan_channel">نداء الصلاة</string>
+    <string name="prayer_offset">فارق %1$s</string>
+    <string name="offset_value">%1$s د   ·   %2$s</string>
+    <string name="setting_value">‹  %1$s  ›</string>
+    <string name="jumuah">جمعة مباركة</string>
+    <string name="thought_today">حديث اليوم</string>
+    <string name="prayer_in">بعد %1$s</string>
+    <string name="countdown_hm">%1$dس %2$dد</string>
+    <string name="countdown_m">%1$dد</string>
+    <string name="dock_now_first">%1$s صار في المقدمة</string>
+    <string name="dock_moved_up">%1$s تقدّم خطوة</string>
+
+    <string-array name="prayer_names">
+        <item>الفجر</item>
+        <item>الشروق</item>
+        <item>الظهر</item>
+        <item>العصر</item>
+        <item>المغرب</item>
+        <item>العشاء</item>
+    </string-array>
+    <string-array name="hijri_months">
+        <item>محرم</item>
+        <item>صفر</item>
+        <item>ربيع الأول</item>
+        <item>ربيع الآخر</item>
+        <item>جمادى الأولى</item>
+        <item>جمادى الآخرة</item>
+        <item>رجب</item>
+        <item>شعبان</item>
+        <item>رمضان</item>
+        <item>شوال</item>
+        <item>ذو القعدة</item>
+        <item>ذو الحجة</item>
+    </string-array>
+    <string-array name="method_names">
+        <item>كراتشي</item>
+        <item>رابطة العالم الإسلامي</item>
+        <item>أم القرى</item>
+        <item>الهيئة المصرية</item>
+        <item>أمريكا الشمالية</item>
+        <item>دبي</item>
+        <item>الكويت</item>
+        <item>قطر</item>
+        <item>سنغافورة</item>
+        <item>لجنة رؤية الهلال</item>
+    </string-array>
+    <string-array name="clock_fonts">
+        <item>Cormorant</item>
+        <item>Outfit</item>
+    </string-array>
+    <string-array name="text_sizes">
+        <item>عادي</item>
+        <item>كبير</item>
+        <item>أكبر</item>
+    </string-array>
+    <string-array name="adhan_modes">
+        <item>كامل</item>
+        <item>الله أكبر</item>
+        <item>تنبيه</item>
+        <item>متوقف</item>
+    </string-array>
+</resources>
