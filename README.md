@@ -3,8 +3,7 @@
 **A calm, widget-first home screen for Android TV: a sky that moves with the day, glanceable clocks,
 weather and a daily thought, with prayer times built in.**
 
-This repository is [Jehad’s fork](https://github.com/jehadbaeth/widgetv) of
-[ashfaqhaq/widgetv](https://github.com/ashfaqhaq/widgetv). The home screen is in Arabic. A hadith
+The home screen is in Arabic. A hadith
 rotates every minute, an adhan plays at prayer time, and a looping fireplace sits behind the whole
 screen. On a Fire TV the launcher can cover Amazon’s home (ads included) and hand it back when you
 need Settings.
@@ -215,8 +214,9 @@ different key.
 - Weather: [Open-Meteo](https://open-meteo.com) (CC BY 4.0).
 - Quotes checked against [quran.com](https://quran.com) (Uthmani text) and
   [sunnah.com](https://sunnah.com). The rotating line is a hadith from those collections, not a paraphrase.
-- Adhan: [File:Adhan.ogg](https://commons.wikimedia.org/wiki/File:Adhan.ogg) by Aishatu98, CC0,
-  trimmed. The short beep is generated.
+- Adhan: [Adhan, Great Mosque of Mecca, 21 Jan 2013](https://commons.wikimedia.org/wiki/File:Adhan,_Great_Mosque_of_Mecca_-_Jan_21,_2013.webm)
+  by Seyfula Islam, CC BY 3.0. The full call starts after the crowd noise; the short clip is the
+  opening takbir. The beep is generated.
 - Arabic type: [Noto Naskh Arabic](https://fonts.google.com/noto/specimen/Noto+Naskh+Arabic) (SIL OFL 1.1).
 
 Full licence texts: [`NOTICE.md`](NOTICE.md).

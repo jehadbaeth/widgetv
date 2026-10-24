@@ -10,8 +10,8 @@ android {
         applicationId 'tv.widgetv.home'
         minSdk 25
         targetSdk 34
-        versionCode 22
-        versionName '1.2-api25'
+        versionCode 23
+        versionName '1.3-api25'
     }
 
     androidResources {

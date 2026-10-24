@@ -23,7 +23,8 @@ import android.util.Log;
 /**
  * Sounds the adhan and asks other apps to pause, then gives audio focus back so they can resume.
  * An app or an HDMI input that ignores audio focus keeps playing under the call.
- * Full and takbir clips are File:Adhan.ogg by Aishatu98, CC0, Wikimedia Commons.
+ * Full and takbir clips are the adhan at the Great Mosque of Mecca, 21 Jan 2013, by Seyfula Islam,
+ * CC BY 3.0, Wikimedia Commons (File:Adhan, Great Mosque of Mecca - Jan 21, 2013.webm).
  */
 public class AdhanPlayer extends Service {
     private static final String TAG = Config.TAG;
