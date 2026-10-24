@@ -178,8 +178,16 @@ public class MainActivity extends Activity {
         cfg = Config.get(this);
         header = findViewById(R.id.header);
         awayRow = findViewById(R.id.away_row);
-        panelRows = cfg.prayerEnabled ? new int[]{ROW_FIRE, ROW_ADHAN, ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
+        int[] settings = cfg.prayerEnabled ? new int[]{ROW_FIRE, ROW_ADHAN, ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
                 ROW_OFFSET + 3, ROW_OFFSET + 4, ROW_FONT, ROW_TEXT_SIZE} : new int[]{ROW_FIRE, ROW_FONT, ROW_TEXT_SIZE};
+        // The Amazon row only exists on the Fire Stick. The TCL has no Amazon home to replace.
+        if (AmazonHome.present(this)) {
+            panelRows = new int[settings.length + 1];
+            panelRows[0] = ROW_AMAZON;
+            System.arraycopy(settings, 0, panelRows, 1, settings.length);
+        } else {
+            panelRows = settings;
+        }
         timeline.setVisibility(cfg.prayerEnabled ? View.VISIBLE : View.GONE);
         // Second clock: hidden entirely when off; the flag is hidden when its drawable name is unknown.
         awayRow.setVisibility(cfg.secondEnabled ? View.VISIBLE : View.GONE);
@@ -291,6 +299,10 @@ public class MainActivity extends Activity {
         updateClock(); // also the weather stale check
         scheduleThoughtRotation();
         AdhanAlarm.schedule(this);
+        AmazonHome.apply(this);
+        HomeWatch.dismissCover();
+        main.removeCallbacks(redrawFire);
+        main.postDelayed(redrawFire, 400);
         loadApps(false);
     }
 
@@ -303,6 +315,7 @@ public class MainActivity extends Activity {
         AdhanPlayer.setCue(null);
         adhanBlob.setVisibility(View.GONE);
         fire.stop();
+        main.removeCallbacks(redrawFire);
         getSystemService(DisplayManager.class).unregisterDisplayListener(displayListener);
         unregisterReceiver(timeReceiver);
         if (zone == Zone.MENU) closeMenu();
@@ -314,9 +327,23 @@ public class MainActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        // Returning from the input picker does not always resume the activity. The video buffer
-        // is gone; the crackle is not. Attach the picture again.
-        if (hasFocus && resumed) fire.rebind();
+        // An input change can blank the fireplace without pausing this activity.
+        if (hasFocus && resumed) kickFire();
+    }
+
+    private final Runnable redrawFire = this::kickFire;
+
+    /**
+     * An input change leaves the crackle running and the picture undrawn. Scrolling to the app
+     * list and back is what draws it again, so do that one-pixel shift here.
+     */
+    private void kickFire() {
+        if (!resumed || page == null) return;
+        int y = page.getScrollY();
+        page.scrollTo(0, y + 1);
+        page.post(() -> {
+            if (resumed) page.scrollTo(0, y);
+        });
     }
 
     private final DisplayManager.DisplayListener displayListener = new DisplayManager.DisplayListener() {
@@ -330,7 +357,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onDisplayChanged(int displayId) {
-            if (resumed) fire.rebind();
+            if (resumed) kickFire();
         }
     };
 
@@ -360,6 +387,7 @@ public class MainActivity extends Activity {
         super.onDestroy();
         main.removeCallbacks(rotateThought);
         main.removeCallbacks(hideAdhanBlob);
+        main.removeCallbacks(redrawFire);
         AdhanPlayer.setCue(null);
         fire.stop();
         unregisterReceiver(packageReceiver);
@@ -769,7 +797,7 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- Prayer settings panel
 
     /** Row ids: Asr school, method, the five offsets (Fajr, Dhuhr, Asr, Maghrib, Isha), clock font, text size, adhan. */
-    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8, ROW_ADHAN = 9, ROW_FIRE = 10;
+    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8, ROW_ADHAN = 9, ROW_FIRE = 10, ROW_AMAZON = 11;
     private static final int PANEL_ROW_DP = 26;
 
     private void openPanel() {
@@ -843,6 +871,9 @@ public class MainActivity extends Activity {
             } else if (i == ROW_FIRE) {
                 label = getString(R.string.fire);
                 value = getString(PrayerPrefs.fire(this) ? R.string.on : R.string.off);
+            } else if (i == ROW_AMAZON) {
+                label = getString(R.string.amazon_home);
+                value = getString(PrayerPrefs.amazonHome(this) ? R.string.on : R.string.off);
             } else {
                 int prayer = PrayerPrefs.OFFSET_PRAYERS[i - ROW_OFFSET];
                 int off = PrayerPrefs.offset(this, prayer);
@@ -873,6 +904,9 @@ public class MainActivity extends Activity {
         } else if (row == ROW_FIRE) {
             PrayerPrefs.setFire(this, !PrayerPrefs.fire(this));
             applyFire();
+        } else if (row == ROW_AMAZON) {
+            PrayerPrefs.setAmazonHome(this, !PrayerPrefs.amazonHome(this));
+            AmazonHome.apply(this);
         } else {
             int prayer = PrayerPrefs.OFFSET_PRAYERS[row - ROW_OFFSET];
             PrayerPrefs.setOffset(this, prayer, PrayerPrefs.offset(this, prayer) + dir);
@@ -884,7 +918,8 @@ public class MainActivity extends Activity {
                 + PrayerPrefs.METHODS[PrayerPrefs.methodIndex(this)] + " offsets=" + Arrays.toString(PrayerPrefs.offsets(this))
                 + " clockFont=" + PrayerPrefs.CLOCK_FONTS[PrayerPrefs.clockFont(this)]
                 + " textSize=" + PrayerPrefs.TEXT_SIZES[PrayerPrefs.textSize(this)]
-                + " adhan=" + PrayerPrefs.adhanMode(this) + " fire=" + PrayerPrefs.fire(this) + " times=" + timesLog());
+                + " adhan=" + PrayerPrefs.adhanMode(this) + " fire=" + PrayerPrefs.fire(this)
+                + " amazonHome=" + PrayerPrefs.amazonHome(this) + " times=" + timesLog());
     }
 
     // ---------------------------------------------------------------- clock, date, prayer, weather

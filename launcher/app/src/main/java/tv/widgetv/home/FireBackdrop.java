@@ -95,36 +95,6 @@ final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceH
         releasePlayer();
     }
 
-    /**
-     * The TV can take the video buffer for an input and hand it back without pausing this activity.
-     * The player keeps the crackle; the texture is blank until it is attached again. A later layout
-     * (scrolling the app list) happens to rebuild it, which is why the flames return then.
-     */
-    void rebind() {
-        if (!enabled || starting) return;
-        MediaPlayer mp = player;
-        if (mp == null) {
-            start();
-            return;
-        }
-        try {
-            if (useSurface) {
-                mp.setDisplay(null);
-                mp.setDisplay(surfaceView.getHolder());
-            } else if (surface != null) {
-                mp.setSurface(null);
-                mp.setSurface(surface);
-            } else {
-                return;
-            }
-            Log.i(TAG, "fire: rebound video");
-        } catch (IllegalStateException e) {
-            Log.w(TAG, "fire: rebind failed, restarting", e);
-            releasePlayer();
-            start();
-        }
-    }
-
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         if (!useSurface) return;
@@ -134,7 +104,6 @@ final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceH
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (useSurface) rebind();
     }
 
     @Override
@@ -153,7 +122,6 @@ final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceH
 
     @Override
     public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int width, int height) {
-        if (!useSurface) rebind();
     }
 
     @Override

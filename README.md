@@ -3,6 +3,30 @@
 **A calm, widget-first home screen for Android TV: a sky that moves with the day, glanceable clocks,
 weather and a daily thought, with prayer times built in.**
 
+This repository is [Jehad’s fork](https://github.com/jehadbaeth/widgetv) of
+[ashfaqhaq/widgetv](https://github.com/ashfaqhaq/widgetv). The home screen is in Arabic. A hadith
+rotates every minute, an adhan plays at prayer time, and a looping fireplace sits behind the whole
+screen. On a Fire TV the launcher can cover Amazon’s home (ads included) and hand it back when you
+need Settings.
+
+**Install a build** from the [latest release](https://github.com/jehadbaeth/widgetv/releases/latest).
+The APK is `minSdk` 25, so it installs on Fire OS 6 as well as current Google TV. Updates use the
+same signing key as the published releases, so `adb install -r` replaces the copy already on the TV:
+
+```bash
+adb connect 192.168.0.68:5555
+adb install -r widgetv.apk
+```
+
+On Google TV, set it as the home app from Settings, or with
+`adb shell cmd package set-home-activity tv.widgetv.home/.MainActivity`. Fire OS ignores that
+command. Leave **Amazon home** on in the prayer panel and the Home button comes back here. Turn
+that row off when you need Amazon’s Settings, then turn it on again. A Google TV that has no Amazon
+launcher never shows the row.
+
+The screenshots below are from the upstream English build. This fork’s defaults are Braunschweig,
+Arabic, a full adhan, and the fireplace on. Change them in `config.xml` before building.
+
 ![The home screen at 12:30: a midday sky, big clock with weather, a second clock with a flag, the prayer timeline, a thought of the day and a dock of four apps](docs/screenshots/day-1230.png)
 
 Most TV home screens are billboards. This one is a quiet window: the background shifts from dawn to
@@ -102,6 +126,14 @@ fills it in for you; to change something later, edit it and run `tools/build-ins
 | `pattern_mode` | `zellige` every day or `rotate` daily | `zellige` |
 | `thoughts_enabled` | Thought of the day | `true` |
 | `clock_font`, `text_size` | Starting values for the panel | `cormorant`, `normal` |
+| `ui_language` | `ar` or `en`. Arabic mirrors the screen; the prayer strip stays English, left to right | `ar` |
+| `adhan_pref` | `full`, `takbir` (opening takbir only), `beep`, or `off` | `full` |
+| `fire_enabled` | Looping fireplace with sound, behind the home screen | `true` |
+
+On the sofa, hold OK on an empty part of the home screen. The panel sets the fireplace, the adhan,
+the Asr school, the calculation method, per-prayer offsets, the clock font and the text size. On a
+Fire TV the first row is **Amazon home** (الرئيسية لأمازون). It is on unless you turn it off.
+Left and right change a row; the values for on and off are the same words as the other switches.
 
 Flags shipped: Canada, India, UK, USA, UAE, Saudi Arabia, Pakistan. Claude Code draws a new one if you
 need it. The thought list is in [`content/`](content/README.md). How the screen is built:
@@ -137,14 +169,26 @@ again), and close ADB. Details in [`docs/UPDATES.md`](docs/UPDATES.md). Keep aut
 
 ## Tested on
 
-Tested on a Sony BRAVIA (VU31 platform), Android 14 Google TV, 2 GB RAM. Notes and the full disable
-list: [`examples/sony-bravia-vu31.md`](examples/sony-bravia-vu31.md).
+This fork runs on a TCL 55C655 (Google TV, Android 12) and an Amazon Fire TV Stick 4K (AFTMM, Fire OS
+6, Android 7.1.2). `minSdk` is 25. Upstream was written for a Sony BRAVIA (VU31, Android 14 Google
+TV); those notes are in [`examples/sony-bravia-vu31.md`](examples/sony-bravia-vu31.md).
 
-It should work on Android TV / Google TV 9 and newer (the launcher's `minSdk` is 28); older versions
-are untested. Reports and `examples/<model>.md` pull requests are welcome.
+## Build
 
-The screenshots come from the original build on that TV; this generalised build compiles but has not
-yet been run on hardware. If you try it, please open an issue with your TV model.
+Java 17 and Android SDK platform 34, build-tools 34.0.0.
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+export ANDROID_HOME="$HOME/android-sdk"
+cd launcher && ./gradlew assembleDebug
+```
+
+`tools/build-install.sh` does the same and can install over ADB. GitHub Actions builds every push and
+pull request. A tag named `v*` builds a signed release APK and attaches it to a GitHub Release.
+Release signing uses the repository secrets `WIDGETV_KEYSTORE_BASE64`, `WIDGETV_KEYSTORE_PASSWORD`,
+`WIDGETV_KEY_ALIAS` and `WIDGETV_KEY_PASSWORD`. Without those secrets the release APK is signed with
+the debug key of the machine that built it, and it will not update an install signed with a
+different key.
 
 ## Repo map
 
@@ -169,8 +213,11 @@ yet been run on hardware. If you try it, please open an issue with your TV model
   [Outfit](https://github.com/Outfitio/Outfit-Fonts), [Alexandria](https://github.com/Gue3bara/Alexandria)
   (SIL OFL 1.1).
 - Weather: [Open-Meteo](https://open-meteo.com) (CC BY 4.0).
-- Quotes checked against [quran.com](https://quran.com) (Sahih International) and
-  [sunnah.com](https://sunnah.com).
+- Quotes checked against [quran.com](https://quran.com) (Uthmani text) and
+  [sunnah.com](https://sunnah.com). The rotating line is a hadith from those collections, not a paraphrase.
+- Adhan: [File:Adhan.ogg](https://commons.wikimedia.org/wiki/File:Adhan.ogg) by Aishatu98, CC0,
+  trimmed. The short beep is generated.
+- Arabic type: [Noto Naskh Arabic](https://fonts.google.com/noto/specimen/Noto+Naskh+Arabic) (SIL OFL 1.1).
 
 Full licence texts: [`NOTICE.md`](NOTICE.md).
 

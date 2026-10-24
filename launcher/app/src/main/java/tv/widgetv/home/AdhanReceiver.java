@@ -21,5 +21,10 @@ public class AdhanReceiver extends BroadcastReceiver {
             }
         }
         AdhanAlarm.schedule(context);
+        try {
+            AmazonHome.apply(context);
+        } catch (IllegalStateException denied) {
+            // A background start is refused. The next time home opens, onResume starts the watch.
+        }
     }
 }

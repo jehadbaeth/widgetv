@@ -10,7 +10,7 @@ android {
         applicationId 'tv.widgetv.home'
         minSdk 25
         targetSdk 34
-        versionCode 12
+        versionCode 22
         versionName '1.2-api25'
     }
 
@@ -26,6 +26,29 @@ android {
         coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    def releaseStore = System.getenv('WIDGETV_KEYSTORE')
+    signingConfigs {
+        if (releaseStore) {
+            release {
+                storeFile file(releaseStore)
+                storePassword System.getenv('WIDGETV_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('WIDGETV_KEY_ALIAS')
+                keyPassword System.getenv('WIDGETV_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (releaseStore) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
+        }
     }
 }
 

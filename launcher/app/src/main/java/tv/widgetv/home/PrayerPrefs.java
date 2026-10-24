@@ -96,6 +96,18 @@ final class PrayerPrefs {
         of(c).edit().putBoolean("fire", on).apply();
     }
 
+    /**
+     * Replace the Amazon home with WidgeTV. Default on. Off leaves the Fire Stick home and its
+     * settings alone. The TCL never reads this: it has no Amazon launcher.
+     */
+    static boolean amazonHome(Context c) {
+        return of(c).getBoolean("amazon_home", true);
+    }
+
+    static void setAmazonHome(Context c, boolean on) {
+        of(c).edit().putBoolean("amazon_home", on).apply();
+    }
+
     /** Header clock font: 0 Cormorant Garamond Light, 1 Outfit Thin. */
     static final String[] CLOCK_FONTS = {"Cormorant", "Outfit"};
 
