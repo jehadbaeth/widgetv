@@ -6,7 +6,9 @@ weather and a daily thought, with prayer times built in.**
 The home screen is in Arabic. A hadith
 rotates every minute, an adhan plays at prayer time, and a looping fireplace sits behind the whole
 screen. On a Fire TV the launcher can cover Amazon’s home (ads included) and hand it back when you
-need Settings.
+need Settings. A phone can open `http://<tv>:8765`, sign in with the password on the reminder row
+of prayer settings, and leave a reminder. It can be one time, daily, weekly, workdays, or weekends.
+At that time the TV beeps and covers the screen until OK.
 
 **Install a build** from the [latest release](https://github.com/jehadbaeth/widgetv/releases/latest).
 The APK is `minSdk` 25, so it installs on Fire OS 6 as well as current Google TV. Updates use the
@@ -14,7 +16,7 @@ same signing key as the published releases, so `adb install -r` replaces the cop
 
 ```bash
 adb connect 192.168.0.68:5555
-adb install -r widgetv-1.2.0.apk
+adb install -r widgetv-1.6.0.apk
 ```
 
 On Google TV, set it as the home app from Settings, or with

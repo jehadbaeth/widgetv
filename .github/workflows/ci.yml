@@ -20,6 +20,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v5
         with:
@@ -83,13 +85,16 @@ jobs:
 
       - name: Name the release APK
         if: startsWith(github.ref, 'refs/tags/v')
-        run: cp launcher/app/build/outputs/apk/release/app-release.apk "widgetv-${GITHUB_REF_NAME}.apk"
+        run: |
+          name="widgetv-${GITHUB_REF_NAME#v}.apk"
+          cp launcher/app/build/outputs/apk/release/app-release.apk "$name"
+          echo "APK_NAME=$name" >> "$GITHUB_ENV"
 
       - name: Publish the GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: widgetv-${{ github.ref_name }}.apk
+          files: ${{ env.APK_NAME }}
           generate_release_notes: true
           fail_on_unmatched_files: true
 

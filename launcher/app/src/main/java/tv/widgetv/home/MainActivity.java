@@ -178,8 +178,8 @@ public class MainActivity extends Activity {
         cfg = Config.get(this);
         header = findViewById(R.id.header);
         awayRow = findViewById(R.id.away_row);
-        int[] settings = cfg.prayerEnabled ? new int[]{ROW_FIRE, ROW_ADHAN, ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
-                ROW_OFFSET + 3, ROW_OFFSET + 4, ROW_FONT, ROW_TEXT_SIZE} : new int[]{ROW_FIRE, ROW_FONT, ROW_TEXT_SIZE};
+        int[] settings = cfg.prayerEnabled ? new int[]{ROW_REMIND, ROW_FIRE, ROW_ADHAN, ROW_ASR, ROW_METHOD, ROW_OFFSET, ROW_OFFSET + 1, ROW_OFFSET + 2,
+                ROW_OFFSET + 3, ROW_OFFSET + 4, ROW_FONT, ROW_TEXT_SIZE} : new int[]{ROW_REMIND, ROW_FIRE, ROW_FONT, ROW_TEXT_SIZE};
         // The Amazon row only exists on the Fire Stick. The TCL has no Amazon home to replace.
         if (AmazonHome.present(this)) {
             panelRows = new int[settings.length + 1];
@@ -299,6 +299,8 @@ public class MainActivity extends Activity {
         updateClock(); // also the weather stale check
         scheduleThoughtRotation();
         AdhanAlarm.schedule(this);
+        Reminders.schedule(this);
+        ReminderServer.start(this);
         AmazonHome.apply(this);
         HomeWatch.dismissCover();
         main.removeCallbacks(redrawFire);
@@ -797,7 +799,7 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- Prayer settings panel
 
     /** Row ids: Asr school, method, the five offsets (Fajr, Dhuhr, Asr, Maghrib, Isha), clock font, text size, adhan. */
-    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8, ROW_ADHAN = 9, ROW_FIRE = 10, ROW_AMAZON = 11;
+    private static final int ROW_ASR = 0, ROW_METHOD = 1, ROW_OFFSET = 2, ROW_FONT = 7, ROW_TEXT_SIZE = 8, ROW_ADHAN = 9, ROW_FIRE = 10, ROW_AMAZON = 11, ROW_REMIND = 12;
     private static final int PANEL_ROW_DP = 26;
 
     private void openPanel() {
@@ -874,6 +876,10 @@ public class MainActivity extends Activity {
             } else if (i == ROW_AMAZON) {
                 label = getString(R.string.amazon_home);
                 value = getString(PrayerPrefs.amazonHome(this) ? R.string.on : R.string.off);
+            } else if (i == ROW_REMIND) {
+                boolean on = Reminders.enabled(this);
+                label = on ? Reminders.panelAddress() : getString(R.string.reminders);
+                value = on ? Reminders.password(this) : getString(R.string.off);
             } else {
                 int prayer = PrayerPrefs.OFFSET_PRAYERS[i - ROW_OFFSET];
                 int off = PrayerPrefs.offset(this, prayer);
@@ -881,8 +887,17 @@ public class MainActivity extends Activity {
                 label = getString(R.string.prayer_offset, getResources().getStringArray(R.array.prayer_names)[prayer]);
                 value = getString(R.string.offset_value, sign, clockText(day.times[prayer]));
             }
-            ((TextView) row.getChildAt(0)).setText(label);
-            ((TextView) row.getChildAt(1)).setText(getString(R.string.setting_value, value));
+            TextView labelView = (TextView) row.getChildAt(0);
+            TextView valueView = (TextView) row.getChildAt(1);
+            labelView.setText(label);
+            valueView.setText(getString(R.string.setting_value, value));
+            if (i == ROW_REMIND) {
+                labelView.setTextDirection(View.TEXT_DIRECTION_LTR);
+                labelView.setEllipsize(TextUtils.TruncateAt.START);
+                valueView.setTextDirection(View.TEXT_DIRECTION_LTR);
+            } else {
+                labelView.setEllipsize(null);
+            }
             rowLook(row, zone == Zone.PANEL && k == panelIdx);
         }
     }
@@ -907,6 +922,8 @@ public class MainActivity extends Activity {
         } else if (row == ROW_AMAZON) {
             PrayerPrefs.setAmazonHome(this, !PrayerPrefs.amazonHome(this));
             AmazonHome.apply(this);
+        } else if (row == ROW_REMIND) {
+            Reminders.setEnabled(this, !Reminders.enabled(this));
         } else {
             int prayer = PrayerPrefs.OFFSET_PRAYERS[row - ROW_OFFSET];
             PrayerPrefs.setOffset(this, prayer, PrayerPrefs.offset(this, prayer) + dir);
@@ -919,7 +936,8 @@ public class MainActivity extends Activity {
                 + " clockFont=" + PrayerPrefs.CLOCK_FONTS[PrayerPrefs.clockFont(this)]
                 + " textSize=" + PrayerPrefs.TEXT_SIZES[PrayerPrefs.textSize(this)]
                 + " adhan=" + PrayerPrefs.adhanMode(this) + " fire=" + PrayerPrefs.fire(this)
-                + " amazonHome=" + PrayerPrefs.amazonHome(this) + " times=" + timesLog());
+                + " amazonHome=" + PrayerPrefs.amazonHome(this)
+                + " reminders=" + Reminders.enabled(this) + " times=" + timesLog());
     }
 
     // ---------------------------------------------------------------- clock, date, prayer, weather

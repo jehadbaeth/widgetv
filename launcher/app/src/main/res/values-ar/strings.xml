@@ -21,6 +21,10 @@
     <string name="adhan">الأذان</string>
     <string name="fire">النار</string>
     <string name="amazon_home">الرئيسية لأمازون</string>
+    <string name="reminders">التذكير</string>
+    <string name="reminder_channel">التذكير</string>
+    <string name="reminder_due_channel">تذكير</string>
+    <string name="reminder_ok">موافق</string>
     <string name="on">تعمل</string>
     <string name="off">متوقفة</string>
     <string name="adhan_channel">نداء الصلاة</string>

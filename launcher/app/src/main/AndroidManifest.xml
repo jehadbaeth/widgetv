@@ -40,6 +40,7 @@
     </queries>
 
     <application
+        android:name=".LauncherApp"
         android:allowBackup="false"
         android:banner="@drawable/banner"
         android:icon="@drawable/icon"
@@ -70,6 +71,22 @@
         <service
             android:name=".HomeWatch"
             android:exported="false" />
+
+        <service
+            android:name=".ReminderServer"
+            android:exported="false" />
+
+        <service
+            android:name=".ReminderShow"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="tv.widgetv.home.REMINDER" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".AdhanReceiver"

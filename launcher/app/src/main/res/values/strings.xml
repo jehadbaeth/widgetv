@@ -21,6 +21,10 @@
     <string name="adhan">Adhan</string>
     <string name="fire">Fire</string>
     <string name="amazon_home">Amazon home</string>
+    <string name="reminders">Reminders</string>
+    <string name="reminder_channel">Reminders</string>
+    <string name="reminder_due_channel">Reminder</string>
+    <string name="reminder_ok">OK</string>
     <string name="on">On</string>
     <string name="off">Off</string>
     <string name="adhan_channel">Prayer call</string>

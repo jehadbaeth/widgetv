@@ -21,6 +21,8 @@ public class AdhanReceiver extends BroadcastReceiver {
             }
         }
         AdhanAlarm.schedule(context);
+        Reminders.schedule(context);
+        ReminderServer.start(context);
         try {
             AmazonHome.apply(context);
         } catch (IllegalStateException denied) {
