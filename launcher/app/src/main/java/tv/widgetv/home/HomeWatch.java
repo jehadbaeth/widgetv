@@ -29,8 +29,18 @@ import java.lang.ref.WeakReference;
 public class HomeWatch extends Service {
     private static final String TAG = Config.TAG;
     private static final long POLL_MS = 350;
+    /** Each look reads this much of the usage log. */
+    private static final long LOOK_MS = 4000;
+    /**
+     * The first look after a start reads further back. At boot, and when a crash restarts this
+     * service, the Amazon home has been up longer than one look and would otherwise stay.
+     */
+    private static final long FIRST_LOOK_MS = 60 * 60_000L;
+    /** The cover goes even if WidgeTV never comes up, so the remote is never stuck behind it. */
+    private static final long COVER_MS = 10_000;
     private static WeakReference<HomeWatch> live;
     private final Handler main = new Handler(Looper.getMainLooper());
+    private long lookBack = FIRST_LOOK_MS;
     private long lastSeen;
     private long lastOpen;
     private boolean running;
@@ -86,7 +96,8 @@ public class HomeWatch extends Service {
         UsageStatsManager stats = getSystemService(UsageStatsManager.class);
         if (stats == null) return;
         long now = System.currentTimeMillis();
-        UsageEvents events = stats.queryEvents(now - 4000, now);
+        UsageEvents events = stats.queryEvents(now - lookBack, now);
+        lookBack = LOOK_MS;
         if (events == null) return;
         UsageEvents.Event event = new UsageEvents.Event();
         String pkg = null;
@@ -138,6 +149,7 @@ public class HomeWatch extends Service {
         try {
             ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(shade, lp);
             cover = shade;
+            main.postDelayed(dropCover, COVER_MS);
         } catch (RuntimeException denied) {
             Log.w(TAG, "home watch: cover refused", denied);
         }
@@ -149,7 +161,10 @@ public class HomeWatch extends Service {
         if (watch != null) watch.hideCover();
     }
 
+    private final Runnable dropCover = this::hideCover;
+
     private void hideCover() {
+        main.removeCallbacks(dropCover);
         if (cover == null) return;
         try {
             ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(cover);
