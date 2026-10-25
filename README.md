@@ -16,7 +16,7 @@ same signing key as the published releases, so `adb install -r` replaces the cop
 
 ```bash
 adb connect 192.168.0.68:5555
-adb install -r widgetv-1.6.0.apk
+adb install -r widgetv-1.7.0.apk
 ```
 
 On Google TV, set it as the home app from Settings, or with
