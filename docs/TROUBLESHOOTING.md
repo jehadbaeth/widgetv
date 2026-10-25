@@ -92,6 +92,14 @@ to change the method or Asr school, or add per-prayer offsets to match your masj
 **The second clock's flag is missing.** `second_flag` must name a drawable in
 `launcher/app/src/main/res/drawable/`; an unknown name hides the flag (the log says so).
 
+**The picture goes black after a while but the TV stays on.** The Fire Stick went to sleep and stopped
+sending HDMI. Fire OS has a hidden 20 minute sleep timer (`secure sleep_timeout`, 1200000 ms) that the
+screensaver setting does not touch, so Never only stops the screensaver. The home screen keeps the
+screen on while it is in front; inside other apps the stick still sleeps. If it still goes black on the
+home screen, check `adb shell settings get secure attentive_timeout`: a positive value is Android 11's
+inattentive sleep, which ignores apps, and `adb shell settings put secure attentive_timeout -1` turns it
+off. Firmware updates can put these values back.
+
 **Live TV or HDMI screenshots are black or 0 bytes.** Content protection. Check what is on screen with
 `adb shell dumpsys activity activities | grep -m1 topResumedActivity` instead.
 

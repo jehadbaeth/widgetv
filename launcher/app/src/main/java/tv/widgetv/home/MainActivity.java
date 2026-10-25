@@ -43,6 +43,7 @@ import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -146,6 +147,9 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // Fire OS sleeps after 20 idle minutes even with the screensaver on Never, and the TV is left
+        // on a black screen. Only while this window is in front; other apps still sleep as before.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         page = findViewById(R.id.page);
         content = findViewById(R.id.content);
         sky = findViewById(R.id.sky);
