@@ -875,8 +875,8 @@ public class MainActivity extends Activity {
                 label = getString(R.string.adhan);
                 value = getResources().getStringArray(R.array.adhan_modes)[PrayerPrefs.adhanMode(this)];
             } else if (i == ROW_FIRE) {
-                label = getString(R.string.fire);
-                value = getString(PrayerPrefs.fire(this) ? R.string.on : R.string.off);
+                label = getString(R.string.background);
+                value = getResources().getStringArray(R.array.backdrop_modes)[PrayerPrefs.backdrop(this)];
             } else if (i == ROW_AMAZON) {
                 label = getString(R.string.amazon_home);
                 value = getString(PrayerPrefs.amazonHome(this) ? R.string.on : R.string.off);
@@ -921,7 +921,7 @@ public class MainActivity extends Activity {
         } else if (row == ROW_ADHAN) {
             PrayerPrefs.setAdhanMode(this, (PrayerPrefs.adhanMode(this) + dir + PrayerPrefs.ADHAN_COUNT) % PrayerPrefs.ADHAN_COUNT);
         } else if (row == ROW_FIRE) {
-            PrayerPrefs.setFire(this, !PrayerPrefs.fire(this));
+            PrayerPrefs.setBackdrop(this, (PrayerPrefs.backdrop(this) + dir + PrayerPrefs.BACKDROP_COUNT) % PrayerPrefs.BACKDROP_COUNT);
             applyFire();
         } else if (row == ROW_AMAZON) {
             PrayerPrefs.setAmazonHome(this, !PrayerPrefs.amazonHome(this));
@@ -939,7 +939,7 @@ public class MainActivity extends Activity {
                 + PrayerPrefs.METHODS[PrayerPrefs.methodIndex(this)] + " offsets=" + Arrays.toString(PrayerPrefs.offsets(this))
                 + " clockFont=" + PrayerPrefs.CLOCK_FONTS[PrayerPrefs.clockFont(this)]
                 + " textSize=" + PrayerPrefs.TEXT_SIZES[PrayerPrefs.textSize(this)]
-                + " adhan=" + PrayerPrefs.adhanMode(this) + " fire=" + PrayerPrefs.fire(this)
+                + " adhan=" + PrayerPrefs.adhanMode(this) + " backdrop=" + PrayerPrefs.backdrop(this)
                 + " amazonHome=" + PrayerPrefs.amazonHome(this)
                 + " reminders=" + Reminders.enabled(this) + " times=" + timesLog());
     }
@@ -1218,10 +1218,11 @@ public class MainActivity extends Activity {
     };
 
     private void applyFire() {
-        boolean on = PrayerPrefs.fire(this);
+        int mode = PrayerPrefs.backdrop(this);
+        boolean on = mode != PrayerPrefs.BACKDROP_OFF;
         sky.setVisibility(on ? View.GONE : View.VISIBLE);
         fire.setAdhan(AdhanPlayer.activePrayer() >= 0);
-        fire.setEnabled(on);
+        fire.setClip(PrayerPrefs.backdropAsset(mode));
     }
 
     private void showAdhanBlob(int prayer, int mode) {

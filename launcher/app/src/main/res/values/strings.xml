@@ -20,6 +20,7 @@
     <string name="text_size">Text size</string>
     <string name="adhan">Adhan</string>
     <string name="fire">Fire</string>
+    <string name="background">Background</string>
     <string name="amazon_home">Amazon home</string>
     <string name="reminders">Reminders</string>
     <string name="reminder_channel">Reminders</string>
@@ -81,6 +82,12 @@
         <item>Normal</item>
         <item>Large</item>
         <item>Larger</item>
+    </string-array>
+    <string-array name="backdrop_modes">
+        <item>Fire</item>
+        <item>Ocean</item>
+        <item>Rain</item>
+        <item>Off</item>
     </string-array>
     <string-array name="adhan_modes">
         <item>Full</item>

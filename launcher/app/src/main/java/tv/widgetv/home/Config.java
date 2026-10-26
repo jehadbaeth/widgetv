@@ -40,8 +40,8 @@ final class Config {
     final int defaultClockFont, defaultTextSize;
     /** PrayerPrefs.ADHAN_FULL .. ADHAN_OFF. */
     final int defaultAdhan;
-    /** Looping fireplace behind the home screen until the panel turns it off. */
-    final boolean defaultFire;
+    /** PrayerPrefs.BACKDROP_FIRE, BACKDROP_OCEAN, or BACKDROP_OFF. */
+    final int defaultBackdrop;
 
     private static Config instance;
 
@@ -84,7 +84,14 @@ final class Config {
         if (!"full".equals(adhan) && !"takbir".equals(adhan) && !"beep".equals(adhan) && !"off".equals(adhan)) {
             Log.e(TAG, "config: adhan_pref '" + adhan + "' is unknown; using full");
         }
-        defaultFire = r.getBoolean(R.bool.fire_enabled);
+        String backdrop = r.getString(R.string.backdrop).trim().toLowerCase(Locale.ROOT);
+        defaultBackdrop = "ocean".equals(backdrop) ? PrayerPrefs.BACKDROP_OCEAN
+                : "rain".equals(backdrop) ? PrayerPrefs.BACKDROP_RAIN
+                : "off".equals(backdrop) ? PrayerPrefs.BACKDROP_OFF
+                : PrayerPrefs.BACKDROP_FIRE;
+        if (!"fire".equals(backdrop) && !"ocean".equals(backdrop) && !"rain".equals(backdrop) && !"off".equals(backdrop)) {
+            Log.e(TAG, "config: backdrop '" + backdrop + "' is unknown; using fire");
+        }
 
         Log.i(TAG, "config: prayer=" + (prayerEnabled ? "on" : "off") + " city=" + cityLabel + " lat=" + lat + " lng=" + lng + " method=" + method + " madhab=" + madhab
                 + " second=" + (secondEnabled ? secondLabel + " " + secondZone : "off")

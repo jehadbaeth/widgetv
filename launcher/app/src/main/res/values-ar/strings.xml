@@ -20,6 +20,7 @@
     <string name="text_size">حجم النص</string>
     <string name="adhan">الأذان</string>
     <string name="fire">النار</string>
+    <string name="background">الخلفية</string>
     <string name="amazon_home">الرئيسية لأمازون</string>
     <string name="reminders">التذكير</string>
     <string name="reminder_channel">التذكير</string>
@@ -81,6 +82,12 @@
         <item>عادي</item>
         <item>كبير</item>
         <item>أكبر</item>
+    </string-array>
+    <string-array name="backdrop_modes">
+        <item>النار</item>
+        <item>الأمواج</item>
+        <item>المطر</item>
+        <item>متوقفة</item>
     </string-array>
     <string-array name="adhan_modes">
         <item>كامل</item>

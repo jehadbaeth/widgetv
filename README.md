@@ -16,7 +16,7 @@ same signing key as the published releases, so `adb install -r` replaces the cop
 
 ```bash
 adb connect 192.168.0.68:5555
-adb install -r widgetv-1.7.0.apk
+adb install -r widgetv-1.10.0.apk
 ```
 
 On Google TV, set it as the home app from Settings, or with
@@ -129,9 +129,9 @@ fills it in for you; to change something later, edit it and run `tools/build-ins
 | `clock_font`, `text_size` | Starting values for the panel | `cormorant`, `normal` |
 | `ui_language` | `ar` or `en`. Arabic mirrors the screen; the prayer strip stays English, left to right | `ar` |
 | `adhan_pref` | `full`, `takbir` (opening takbir only), `beep`, or `off` | `full` |
-| `fire_enabled` | Looping fireplace with sound, behind the home screen | `true` |
+| `backdrop` | Looping picture and sound behind the home screen: `fire`, `ocean`, `rain`, or `off` | `fire` |
 
-On the sofa, hold OK on an empty part of the home screen. The panel sets the fireplace, the adhan,
+On the sofa, hold OK on an empty part of the home screen. The panel sets the background, the adhan,
 the Asr school, the calculation method, per-prayer offsets, the clock font and the text size. On a
 Fire TV the first row is **Amazon home** (الرئيسية لأمازون). It is on unless you turn it off.
 Left and right change a row; the values for on and off are the same words as the other switches.
@@ -216,6 +216,7 @@ different key.
 - Weather: [Open-Meteo](https://open-meteo.com) (CC BY 4.0).
 - Quotes checked against [quran.com](https://quran.com) (Uthmani text) and
   [sunnah.com](https://sunnah.com). The rotating line is a hadith from those collections, not a paraphrase.
+- Rain: the home-screen rain is the supplied middle cut, with a short dissolve where it repeats.
 - Adhan: [Adhan, Great Mosque of Mecca, 21 Jan 2013](https://commons.wikimedia.org/wiki/File:Adhan,_Great_Mosque_of_Mecca_-_Jan_21,_2013.webm)
   by Seyfula Islam, CC BY 3.0. The full call starts after the crowd noise; the short clip is the
   opening takbir. The beep is generated.

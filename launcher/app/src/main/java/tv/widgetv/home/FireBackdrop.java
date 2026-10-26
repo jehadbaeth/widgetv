@@ -17,9 +17,9 @@ import android.view.TextureView;
 import android.view.View;
 
 /**
- * Looping fireplace behind the home screen. Drawn in the window, under the scrim, so the clock and
- * the hadith stay readable. The picture and the crackle stop when the launcher leaves the screen.
- * The adhan takes the speakers; the flames keep running with the sound muted.
+ * Looping picture behind the home screen. Drawn in the window, under the scrim, so the clock and
+ * the hadith stay readable. The picture and its sound stop when the launcher leaves the screen.
+ * The adhan takes the speakers; the picture keeps running with the sound muted.
  */
 final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceHolder.Callback {
     private static final String TAG = Config.TAG;
@@ -39,6 +39,7 @@ final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceH
     private boolean adhan;
     private boolean starting;
     private int resumeAt;
+    private String asset = "fire.mp4";
 
     FireBackdrop(Activity host, TextureView texture, SurfaceView surfaceView, View scrim, View dim, View root) {
         this.host = host;
@@ -50,6 +51,17 @@ final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceH
         useSurface = surfaceView != null;
         if (useSurface) surfaceView.getHolder().addCallback(this);
         else texture.setSurfaceTextureListener(this);
+    }
+
+    /** Empty turns the picture off. A different clip restarts from the beginning. */
+    void setClip(String next) {
+        boolean on = next != null && !next.isEmpty();
+        if (on && !next.equals(asset)) {
+            asset = next;
+            resumeAt = 0;
+            releasePlayer();
+        }
+        setEnabled(on);
     }
 
     void setEnabled(boolean on) {
@@ -143,7 +155,7 @@ final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceH
         if (!enabled || player != null || starting || surface == null) return;
         starting = true;
         try {
-            AssetFileDescriptor afd = host.getAssets().openFd("fire.mp4");
+            AssetFileDescriptor afd = host.getAssets().openFd(asset);
             MediaPlayer mp = new MediaPlayer();
             player = mp;
             mp.setAudioAttributes(new AudioAttributes.Builder()
@@ -173,7 +185,7 @@ final class FireBackdrop implements TextureView.SurfaceTextureListener, SurfaceH
                     requestFocus();
                     applyVolume();
                 }
-                Log.i(TAG, "fire: playing");
+                Log.i(TAG, "backdrop: playing " + asset);
             });
             mp.setOnErrorListener((mp1, what, extra) -> {
                 Log.w(TAG, "fire: player error " + what + "/" + extra);

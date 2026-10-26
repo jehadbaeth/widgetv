@@ -85,15 +85,37 @@ final class PrayerPrefs {
         of(c).edit().putInt("adhan", Math.max(0, Math.min(ADHAN_COUNT - 1, mode))).apply();
     }
 
-    /** Fireplace video and crackle behind the home screen. */
-    static boolean fire(Context c) {
+    /** Picture behind the home screen: the fire, the ocean, the rain, or nothing. */
+    static final int BACKDROP_FIRE = 0, BACKDROP_OCEAN = 1, BACKDROP_RAIN = 2, BACKDROP_OFF = 3, BACKDROP_COUNT = 4;
+
+    static int backdrop(Context c) {
         SharedPreferences prefs = of(c);
-        if (!prefs.contains("fire")) return Config.get(c).defaultFire;
-        return prefs.getBoolean("fire", false);
+        // Off used to be stored as 2, before rain took that slot.
+        if (prefs.getInt("backdrop_rev", 0) < 1) {
+            SharedPreferences.Editor edit = prefs.edit().putInt("backdrop_rev", 1);
+            if (prefs.getInt("backdrop", -1) == 2) edit.putInt("backdrop", BACKDROP_OFF);
+            edit.apply();
+        }
+        int fallback = Config.get(c).defaultBackdrop;
+        if (prefs.contains("backdrop")) {
+            int mode = prefs.getInt("backdrop", fallback);
+            return mode < 0 || mode >= BACKDROP_COUNT ? fallback : mode;
+        }
+        // Older builds stored only an on/off switch for the fire.
+        if (prefs.contains("fire") && !prefs.getBoolean("fire", true)) return BACKDROP_OFF;
+        return fallback;
     }
 
-    static void setFire(Context c, boolean on) {
-        of(c).edit().putBoolean("fire", on).apply();
+    static void setBackdrop(Context c, int mode) {
+        int next = mode < 0 || mode >= BACKDROP_COUNT ? BACKDROP_FIRE : mode;
+        of(c).edit().putInt("backdrop", next).apply();
+    }
+
+    static String backdropAsset(int mode) {
+        if (mode == BACKDROP_OCEAN) return "ocean.mp4";
+        if (mode == BACKDROP_RAIN) return "rain.mp4";
+        if (mode == BACKDROP_FIRE) return "fire.mp4";
+        return "";
     }
 
     /**
